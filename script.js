@@ -29,6 +29,12 @@ export async function script(
   };
 
   try {
+    // skip archived repos
+    if (repository.archived) {
+      octokit.log.info(`${repository.full_name} is archived, skipping.`);
+      return;
+    }
+
     // Safety check.
     const topics = await octokit.request(
       'GET /repos/{owner}/{repo}/topics',
