@@ -29,6 +29,12 @@ export async function script(
   };
 
   try {
+    // skip archived repos
+    if (repository.archived) {
+      octokit.log.info(`${repository.full_name} is archived, skipping.`);
+      return;
+    }
+
     // Safety check.
     const topics = await octokit.request(
       'GET /repos/{owner}/{repo}/topics',
@@ -50,8 +56,8 @@ export async function script(
     for (const pr of prs) {
       const { id, title, merged_at, html_url, draft } = pr;
 
-      // Is it already
-      if (expectedTitle == title && merged_at) {
+      // Is it already handled?
+      if (title.startsWith(expectedTitle) && merged_at) {
         octokit.log.info(
           `${repository.full_name} merged ${id} at ${merged_at}`
         );

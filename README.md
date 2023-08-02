@@ -22,11 +22,23 @@ node cli.js \
 | `--libray`        | string | `@time-loop/cdk-library` | full name of the library to be updated via renovate |
 
 
+## TODO
+
+- detect and address case where PR is not up-to-date with base branch.
+
+
 ## Limitations
 
 - Should be re-written in TypeScript, but all examples were JS, and we're tight for time.
+- Not projen-ified, which is kinda tragic.
+  I feel that these two technologies are deeply complementary.
+  https://github.com/projen/projen/issues/2841
 - Doesn't differentiate between failed status checks which are required vs optional.
+  Or... maybe the rollup does? I haven't checked.
 - Doesn't generate renovate PRs.
+- Not published to npmjs.com, so you have to run it locally.
+  We use github packages, so... we'll probably never publish this to npmjs.com.
+  Either way, not a priority right now.
 
 ## Contributing
 
