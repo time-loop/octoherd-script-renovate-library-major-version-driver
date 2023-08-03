@@ -56,17 +56,18 @@ export async function script(
     for (const pr of prs) {
       const { id, title, merged_at, html_url, draft } = pr;
 
-      // Is it already handled?
-      if (title.startsWith(expectedTitle) && merged_at) {
+      if (!title.startsWith(expectedTitle)) {
+        continue; // This is not hte PR we're looking for.
+      }
+
+      // Is it already merged?
+      if (merged_at) {
         octokit.log.info(
           `${repository.full_name} merged ${id} at ${merged_at}`
         );
         return;
       }
 
-      if (expectedTitle != title) {
-        continue;
-      }
       if (draft) {
         octokit.log.warn(`${repository.full_name} has DRAFT PR at ${html_url}`);
         return;
