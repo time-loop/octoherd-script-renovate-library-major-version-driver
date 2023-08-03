@@ -63,7 +63,7 @@ export async function script(
       // Is it already merged?
       if (merged_at) {
         octokit.log.info(
-          `${repository.full_name} merged ${id} at ${merged_at}`
+          `${repository.full_name} already merged ${id} at ${merged_at}`
         );
         return;
       }
