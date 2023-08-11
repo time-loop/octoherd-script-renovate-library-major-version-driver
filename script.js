@@ -8,8 +8,8 @@ const noTouchTopicName = 'octoherd-no-touch';
  * @param {import('@octoherd/cli').Octokit} octokit
  * @param {import('@octoherd/cli').Repository} repository
  * @param {object} options
- * @param {string} [options.majorVersion] major version number for the library, for example v11
- * @param {string} [options.library] full name of library to be updated via renovate, for example @time-loop/cdk-library
+ * @param {string} [options.majorVersion] major version number for the library, for example v11. If you provide `all` then it will instead address the `all non-major updates` PR.
+ * @param {string} [options.library] full name of library to be updated via renovate, for example @time-loop/cdk-library. Ignored when doing an `all non-major updates`.
  */
 export async function script(
   octokit,
@@ -20,7 +20,10 @@ export async function script(
     throw new Error('--majorVersion is required, example v11');
   }
 
-  const expectedTitle = `fix(deps): update dependency ${library} to ${majorVersion}`;
+  const expectedTitle =
+    majorVersion === 'all'
+      ? 'fix(deps): update all non-major dependencies'
+      : `fix(deps): update dependency ${library} to ${majorVersion}`;
 
   const [repoOwner, repoName] = repository.full_name.split('/');
   const baseParams = {
@@ -56,17 +59,18 @@ export async function script(
     for (const pr of prs) {
       const { id, title, merged_at, html_url, draft } = pr;
 
-      // Is it already handled?
-      if (title.startsWith(expectedTitle) && merged_at) {
+      if (!title.startsWith(expectedTitle)) {
+        continue; // This is not the PR we're looking for. Maybe the next one is?
+      }
+
+      // Is it already merged?
+      if (merged_at) {
         octokit.log.info(
-          `${repository.full_name} merged ${id} at ${merged_at}`
+          `${repository.full_name} already merged ${id} at ${merged_at}`
         );
         return;
       }
 
-      if (expectedTitle != title) {
-        continue;
-      }
       if (draft) {
         octokit.log.warn(`${repository.full_name} has DRAFT PR at ${html_url}`);
         return;
