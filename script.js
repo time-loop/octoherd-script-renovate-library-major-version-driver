@@ -60,7 +60,7 @@ export async function script(
       const { id, title, merged_at, html_url, draft } = pr;
 
       if (!title.startsWith(expectedTitle)) {
-        continue; // This is not hte PR we're looking for.
+        continue; // This is not the PR we're looking for. Maybe the next one is?
       }
 
       // Is it already merged?
