@@ -75,7 +75,7 @@ export async function script(
           octokit.log.info(
             `${repository.full_name} already merged ${html_url} at ${merged_at}, ${daysAgo.toFixed(1)} days ago, ignoring`
           );
-          continue;
+          break; // PRs are returned in chronological order. No need to look further, it doesn't exist.
         }
         octokit.log.info(
           `${repository.full_name} already merged ${html_url} at ${merged_at}`
@@ -250,6 +250,53 @@ export async function script(
     octokit.log.warn(
       `${repository.full_name} has no PR for ${expectedTitle}`
     );
+
+    // Find the update-main workflow,
+    const workflows = await octokit.paginate(
+      'GET /repos/{owner}/{repo}/actions/workflows',
+      { ...baseParams, per_page: 100 },
+      (response) => response.data
+    );
+    const renovateWf = workflows.find(
+      (w) => w.path === '.github/workflows/renovate.yml'
+    );
+    // octokit.log.info(JSON.stringify(renovateWf));
+    if (renovateWf === undefined) {
+      octokit.log.error('Missing upgrade-main / renovate.yml workflow!');
+    }
+    const workflow_id = renovateWf?.id ?? 0; // Should never be 0, but...
+
+    // is it still running?
+    const runs = await octokit.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs', {
+      ...baseParams,
+      workflow_id,
+      per_page: 100,
+    },  (response) => response.data);
+
+    const sortedRunsOnMain = runs
+      .filter((r) => r.head_branch === 'main')
+      .sort((a, b) => b.run_number - a.run_number); // Sort to find newest
+
+    const lastRun = sortedRunsOnMain[0];
+    octokit.log.info(`LastRun run_started_at: ${lastRun.run_started_at} status: ${lastRun.status} id: ${lastRun.id}`);
+
+    // If it's still running, comment and proceed
+    // Per https://docs.github.com/en/free-pro-team@latest/rest/actions/workflow-runs?apiVersion=2022-11-28#get-a-workflow-run
+    // Can be one of: completed, action_required, cancelled, failure, neutral, skipped, stale, success, timed_out, in_progress, queued, requested, waiting, pending
+    if (['in_progress', 'queued', 'requested', 'waiting', 'pending'].includes(lastRun.status ?? 'unknown')) {
+      octokit.log.info(`Renovate is currently ${lastRun.status}: ${lastRun.html_url}`);
+      return;
+    }
+
+    // Don't re-run more than once every 30 min?
+
+    // Otherwise trigger a re-run
+    octokit.log.info(`Triggering re-run of ${lastRun.id}`);
+    octokit.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun', {
+      ...baseParams,
+      run_id: lastRun.id,
+    });
+
   } catch (e) {
     octokit.log.error(e);
   }
