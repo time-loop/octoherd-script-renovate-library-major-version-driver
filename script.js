@@ -10,20 +10,23 @@ const noTouchTopicName = 'octoherd-no-touch';
  * @param {object} options
  * @param {string} [options.majorVersion] major version number for the library, for example v11. If you provide `all` then it will instead address the `all non-major updates` PR.
  * @param {string} [options.library] full name of library to be updated via renovate, for example @time-loop/cdk-library. Ignored when doing an `all non-major updates`.
+ * @param {number} [options.maxAgeDays] the maximum age, in days, since when a PR was merge to consider it the relevant PR. Ignored except when doing `all non-major updates`. Defaults to 7.
  */
 export async function script(
   octokit,
   repository,
-  { majorVersion, library = '@time-loop/cdk-library' }
+  { majorVersion, library = '@time-loop/cdk-library', maxAgeDays = 7 }
 ) {
   if (!majorVersion) {
     throw new Error('--majorVersion is required, example v11');
   }
 
-  const expectedTitle =
-    majorVersion === 'all'
-      ? 'fix(deps): update all non-major dependencies'
-      : `fix(deps): update dependency ${library} to ${majorVersion}`;
+  let checkMaxAge = false;
+  let expectedTitle = `fix(deps): update dependency ${library} to ${majorVersion}`;
+  if (majorVersion === 'all') {
+    checkMaxAge = true;
+    expectedTitle = 'fix(deps): update all non-major dependencies';
+  }
 
   const [repoOwner, repoName] = repository.full_name.split('/');
   const baseParams = {
@@ -57,7 +60,7 @@ export async function script(
       (response) => response.data
     );
     for (const pr of prs) {
-      const { id, title, merged_at, html_url, draft } = pr;
+      const { id, title, merged_at, html_url, draft, closed_at } = pr;
 
       if (!title.startsWith(expectedTitle)) {
         continue; // This is not the PR we're looking for. Maybe the next one is?
@@ -65,10 +68,23 @@ export async function script(
 
       // Is it already merged?
       if (merged_at) {
+        const currentDate = new Date();
+        const mergedAt = Date.parse(merged_at);
+        const daysAgo = (currentDate.getTime() - mergedAt) / (1000 * 60 * 60 * 24);
+        if (checkMaxAge && daysAgo > maxAgeDays) {
+          octokit.log.info(
+            `${repository.full_name} already merged ${html_url} at ${merged_at}, ${daysAgo.toFixed(1)} days ago, ignoring`
+          );
+          continue;
+        }
         octokit.log.info(
-          `${repository.full_name} already merged ${id} at ${merged_at}`
+          `${repository.full_name} already merged ${html_url} at ${merged_at}`
         );
         return;
+      }
+
+      if (closed_at) {
+        continue;
       }
 
       if (draft) {
@@ -232,7 +248,7 @@ export async function script(
 
     // TODO: trigger renovate to generate the PR? If so, we should also detect when the action is already running.
     octokit.log.warn(
-      `${repository.full_name} has no PR for ${library} at ${majorVersion}`
+      `${repository.full_name} has no PR for ${expectedTitle}`
     );
   } catch (e) {
     octokit.log.error(e);
