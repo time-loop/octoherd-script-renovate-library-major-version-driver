@@ -35,7 +35,6 @@ node cli.js \
   https://github.com/projen/projen/issues/2841
 - Doesn't differentiate between failed status checks which are required vs optional.
   Or... maybe the rollup does? I haven't checked.
-- Doesn't generate renovate PRs.
 - Not published to npmjs.com, so you have to run it locally.
   We use github packages, so... we'll probably never publish this to npmjs.com.
   Either way, not a priority right now.
