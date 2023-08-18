@@ -278,20 +278,20 @@ export async function script(
       .sort((a, b) => b.run_number - a.run_number); // Sort to find newest
 
     const lastRun = sortedRunsOnMain[0];
-    octokit.log.info(`LastRun run_started_at: ${lastRun.run_started_at} status: ${lastRun.status} id: ${lastRun.id}`);
+    octokit.log.info(`${repository.full_name} lastRun.run_started_at: ${lastRun.run_started_at} status: ${lastRun.status} id: ${lastRun.id}`);
 
     // If it's still running, comment and proceed
     // Per https://docs.github.com/en/free-pro-team@latest/rest/actions/workflow-runs?apiVersion=2022-11-28#get-a-workflow-run
     // Can be one of: completed, action_required, cancelled, failure, neutral, skipped, stale, success, timed_out, in_progress, queued, requested, waiting, pending
     if (['in_progress', 'queued', 'requested', 'waiting', 'pending'].includes(lastRun.status ?? 'unknown')) {
-      octokit.log.info(`Renovate is currently ${lastRun.status}: ${lastRun.html_url}`);
+      octokit.log.info(`${repository.full_name} renovate is currently ${lastRun.status}: ${lastRun.html_url}`);
       return;
     }
 
     // Don't re-run more than once every 30 min?
 
     // Otherwise trigger a re-run
-    octokit.log.info(`Triggering re-run of ${lastRun.id}`);
+    octokit.log.info(`${repository.full_name} Triggering re-run of ${lastRun.id}`);
     octokit.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun', {
       ...baseParams,
       run_id: lastRun.id,
