@@ -21,6 +21,11 @@ node cli.js \
 | `--majorVersion`  | string | none    | major version number for the library, for example v11 |
 | `--libray`        | string | `@time-loop/cdk-library` | full name of the library to be updated via renovate |
 
+### PAT Requirements
+
+You will need a GH PAT with the following scopes (at a minimum):
+
+- `repo` Full control of private repositories
 
 ## TODO
 
