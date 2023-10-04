@@ -26,6 +26,9 @@
       "main"
     ]
   },
+  "engines": {
+    "node": ">= 18.17.1"
+  },
   "publishConfig": {
     "access": "public"
   }
