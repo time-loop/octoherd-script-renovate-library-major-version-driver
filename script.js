@@ -23,6 +23,7 @@ export async function script(
 
   let checkMaxAge = false;
   let expectedTitle = `fix(deps): update dependency ${library} to ${majorVersion}`;
+  let workflowName = 'renovate';
   switch (majorVersion) {
     case 'all':
       checkMaxAge = true;
@@ -31,6 +32,7 @@ export async function script(
     case 'projen':
       checkMaxAge = true;
       expectedTitle = 'fix(deps): upgrade projen';
+      workflowName = 'update-projen-main';
   }
 
   const [repoOwner, repoName] = repository.full_name.split('/');
@@ -263,7 +265,7 @@ export async function script(
       (response) => response.data
     );
     const renovateWf = workflows.find(
-      (w) => w.path === '.github/workflows/renovate.yml'
+      (w) => w.path === `.github/workflows/${workflowName}.yml`
     );
     // octokit.log.info(JSON.stringify(renovateWf));
     if (renovateWf === undefined) {
