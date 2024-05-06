@@ -9,7 +9,7 @@ const noTouchTopicName = 'octoherd-no-touch';
  * @param {import('@octoherd/cli').Repository} repository
  * @param {object} options
  * @param {string} [options.majorVersion] major version number for the library, for example v11. If you provide `all` then it will instead address the `all non-major updates` PR. If you provide `projen`, it will address the `fix(deps): upgrade projen` PR.
- * @param {string} [options.library] full name of library to be updated via renovate, for example @time-loop/cdk-library. Ignored when doing an `all non-major updates`.
+ * @param {string} [options.library] full name of library to be updated via renovate, for example \@time-loop/cdk-library. Ignored when doing an `all non-major updates`.
  * @param {number} [options.maxAgeDays] the maximum age, in days, since when a PR was merge to consider it the relevant PR. Ignored except when doing `all non-major updates`. Defaults to 7.
  */
 export async function script(
