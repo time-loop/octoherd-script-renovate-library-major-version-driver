@@ -10,7 +10,6 @@ nvm use v18
 node cli.js \
   -R time-loop/*-cdk \
   -T ghp_0123456789abcdefghijABCDEFGHIJabcdefgh \
-  --octoherd-bypass-confirms true \
   --majorVersion v11
 ```
 
@@ -18,8 +17,9 @@ node cli.js \
 
 | option            | type   | default | description        |
 | ----------------- | ------ | ------- | ------------------ |
-| `--majorVersion`  | string | none    | major version number for the library, for example v11 |
-| `--libray`        | string | `@time-loop/cdk-library` | full name of the library to be updated via renovate |
+| `--majorVersion`  | string | none    | Major version number for the library, for example `v11`. If you provide `all` then it will instead address the `all non-major updates` PR. If you provide `projen`, it will address the `fix(deps): upgrade projen` PR. |
+| `--library`       | string | `@time-loop/cdk-library` | Full name of library to be updated via renovate |
+| `--maxAgeDays`    | number | 7 | The maximum age, in days, since when a PR was merge to consider it the relevant PR. Ignored except when doing `all non-major updates` |
 
 ### PAT Requirements
 
