@@ -27,6 +27,14 @@ You will need a GH PAT with the following scopes (at a minimum):
 
 - `repo` Full control of private repositories
 
+## Special Cases
+
+Setting the `majorVersion` to `all` will support the renovate `all non-major dependencies` updates.
+
+Setting the `majorVersion` to `projen` will support the `projen` native `update-projen-main` workflows.
+
+In these special cases, the `--library` option is ignored and the `--maxAgeDays` parameter comes into play.
+
 ## TODO
 
 - detect and address case where PR is not up-to-date with base branch.

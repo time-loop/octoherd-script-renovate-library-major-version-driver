@@ -259,17 +259,17 @@ export async function script(
     );
 
     // Find the update-main workflow,
+    const workflowPath = `.github/workflows/${workflowName}.yml`;
     const workflows = await octokit.paginate(
       'GET /repos/{owner}/{repo}/actions/workflows',
       { ...baseParams, per_page: 100 },
       (response) => response.data
     );
-    const renovateWf = workflows.find(
-      (w) => w.path === `.github/workflows/${workflowName}.yml`
-    );
+    const renovateWf = workflows.find((w) => w.path === workflowPath);
     // octokit.log.info(JSON.stringify(renovateWf));
     if (renovateWf === undefined) {
-      octokit.log.error('Missing upgrade-main / renovate.yml workflow!');
+      octokit.log.error(`Missing workflow at ${workflowPath}`);
+      return;
     }
     const workflow_id = renovateWf?.id ?? 0; // Should never be 0, but...
 
