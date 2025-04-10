@@ -18,9 +18,8 @@
   "author": "Andrew Hammond",
   "license": "ISC",
   "dependencies": {
-    "@octoherd/cli": "^4.0.0"
+    "@octoherd/cli": "^4.0.5"
   },
-  "devDependencies": {},
   "release": {
     "branches": [
       "main"
