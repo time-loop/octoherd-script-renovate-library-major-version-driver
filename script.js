@@ -295,7 +295,15 @@ export async function script(
       return;
     }
 
-    // Don't re-run more than once every 30 min?
+    // Don't re-run more than once every 30 min
+    if (lastRun.run_started_at) {
+      const lastRunTime = Date.parse(lastRun.run_started_at);
+      const minutesSinceLastRun = (Date.now() - lastRunTime) / (1000 * 60);
+      if (minutesSinceLastRun < 30) {
+        octokit.log.info(`${repository.full_name} workflow ran ${minutesSinceLastRun.toFixed(1)} minutes ago, skipping re-run (throttled)`);
+        return;
+      }
+    }
 
     // Otherwise trigger a re-run
     octokit.log.info(`${repository.full_name} Triggering re-run of ${lastRun.id}`);
