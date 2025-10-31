@@ -99,6 +99,125 @@ export async function script(
         return;
       }
 
+      // Apply .projenrc.ts fix for projen PRs
+      if (majorVersion === 'projen') {
+        try {
+          const prBranch = pr.head.ref;
+          const projenrcPath = '.projenrc.ts';
+
+          // Fetch the .projenrc.ts file from the PR branch
+          let fileResponse;
+          try {
+            fileResponse = await octokit.request(
+              'GET /repos/{owner}/{repo}/contents/{path}',
+              {
+                ...baseParams,
+                path: projenrcPath,
+                ref: prBranch,
+              }
+            );
+          } catch (error) {
+            // File doesn't exist or can't be fetched, continue normally
+            if (error.status === 404) {
+              octokit.log.info(
+                `${repository.full_name}: .projenrc.ts not found in PR branch, skipping fix`
+              );
+            } else {
+              octokit.log.warn(
+                `${repository.full_name}: Could not fetch .projenrc.ts: ${error.message}`
+              );
+            }
+            // Continue to PR validation
+            fileResponse = null;
+          }
+
+          if (fileResponse) {
+            const content = Buffer.from(fileResponse.data.content, 'base64').toString('utf-8');
+            const fileSha = fileResponse.data.sha;
+
+            // Check if the file contains the deprecated packageManager configuration
+            if (content.includes('packageManager: javascript.NodePackageManager.PNPM')) {
+              octokit.log.info(
+                `${repository.full_name}: Found deprecated packageManager configuration, applying fix...`
+              );
+
+              let updatedContent = content;
+
+              // Remove the packageManager line
+              updatedContent = updatedContent.replace(
+                /^\s*packageManager:\s*javascript\.NodePackageManager\.PNPM,?\s*$/gm,
+                ''
+              );
+
+              // Remove the pnpmVersion line (handles any version)
+              updatedContent = updatedContent.replace(
+                /^\s*pnpmVersion:\s*['"][^'"]*['"],?\s*$/gm,
+                ''
+              );
+
+              // Check if 'javascript' import is still used elsewhere in the file
+              const remainingContent = updatedContent.replace(
+                /^import\s+\{[^}]*\}\s+from\s+['"]projen['"];?\s*$/gm,
+                ''
+              );
+
+              // If 'javascript' is not used anywhere else, remove the import
+              if (!remainingContent.includes('javascript.')) {
+                updatedContent = updatedContent.replace(
+                  /^import\s+\{\s*javascript\s*\}\s+from\s+['"]projen['"];?[ \t]*\n/gm,
+                  ''
+                );
+              }
+
+              // Clean up any extra blank lines that might have been created
+              updatedContent = updatedContent.replace(/\n\n\n+/g, '\n\n');
+
+              // Clean up blank lines left in object/array property lists after removing lines
+              // This handles: property,\n\n  property -> property,\n  property
+              updatedContent = updatedContent.replace(/,\s*\n\s*\n(\s+)/g, ',\n$1');
+
+              // Clean up blank lines at the start of objects/arrays after removing first property
+              // This handles: {\n\n  property -> {\n  property
+              updatedContent = updatedContent.replace(/\{\s*\n\s*\n(\s+)/g, '{\n$1');
+
+              // Clean up blank lines before closing braces
+              // This handles: \n\n} -> \n} while preserving commas
+              updatedContent = updatedContent.replace(/\s*\n\s*\n(\s*\})/g, '\n$1');
+
+              // Only commit if content actually changed
+              if (updatedContent !== content) {
+                // Commit the changes to the PR branch
+                await octokit.request(
+                  'PUT /repos/{owner}/{repo}/contents/{path}',
+                  {
+                    ...baseParams,
+                    path: projenrcPath,
+                    message: 'chore(projen): remove deprecated packageManager configuration',
+                    content: Buffer.from(updatedContent).toString('base64'),
+                    sha: fileSha,
+                    branch: prBranch,
+                  }
+                );
+
+                octokit.log.info(
+                  `${repository.full_name}: Successfully fixed .projenrc.ts in PR ${html_url}`
+                );
+              } else {
+                octokit.log.info(
+                  `${repository.full_name}: No changes needed for .projenrc.ts`
+                );
+              }
+            }
+          }
+        } catch (error) {
+          // Log error but don't stop the script
+          octokit.log.error(
+            `${repository.full_name}: Error while fixing .projenrc.ts: ${error.message}`
+          );
+          // Continue to PR validation
+        }
+      }
+
       // Copied from
       // https://github.com/gr2m/octoherd-script-merge-pull-requests/blob/main/script.js
       const result = await octokit.graphql(
