@@ -1,3 +1,4 @@
+
 // @ts-check
 
 const noTouchTopicName = 'octoherd-no-touch';
@@ -107,11 +108,12 @@ async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFul
  * @param {string} [options.majorVersion] major version number for the library, for example v11. If you provide `all` then it will instead address the `all non-major updates` PR. If you provide `projen`, it will address the `fix(deps): upgrade projen` PR.
  * @param {string} [options.library] full name of library to be updated via renovate, for example \@time-loop/cdk-library. Ignored when doing an `all non-major updates`.
  * @param {number} [options.maxAgeDays] the maximum age, in days, since when a PR was merge to consider it the relevant PR. Ignored except when doing `all non-major updates`. Defaults to 7.
+ * @param {boolean} [options.merge] whether to merge PRs. Defaults to true.
  */
 export async function script(
   octokit,
   repository,
-  { majorVersion, library = '@time-loop/cdk-library', maxAgeDays = 7 }
+  { majorVersion, library = '@time-loop/cdk-library', maxAgeDays = 7, merge = true }
 ) {
   if (!majorVersion) {
     throw new Error('--majorVersion is required, example v11');
@@ -465,18 +467,22 @@ export async function script(
         }
       }
 
-      const commit_title = `${pr.title} (#${pr.number})`;
-      await octokit.request(
-        'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge',
-        {
-          owner: repository.owner.login,
-          repo: repository.name,
-          pull_number: pr.number,
-          commit_title,
-          merge_method: 'squash',
-        }
-      );
-      octokit.log.info('pull request merged: %s', pr.html_url);
+      if (merge) {
+        const commit_title = `${pr.title} (#${pr.number})`;
+        await octokit.request(
+          'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge',
+          {
+            owner: repository.owner.login,
+            repo: repository.name,
+            pull_number: pr.number,
+            commit_title,
+            merge_method: 'squash',
+          }
+        );
+        octokit.log.info('pull request merged: %s', pr.html_url);
+      } else {
+        octokit.log.info('pull request ready to merge (merge disabled): %s', pr.html_url);
+      }
       return;
     }
 

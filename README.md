@@ -15,11 +15,12 @@ node cli.js \
 
 ## Options
 
-| option            | type   | default | description        |
-| ----------------- | ------ | ------- | ------------------ |
-| `--majorVersion`  | string | none    | Major version number for the library, for example `v11`. If you provide `all` then it will instead address the `all non-major updates` PR. If you provide `projen`, it will address the `fix(deps): upgrade projen` PR. |
-| `--library`       | string | `@time-loop/cdk-library` | Full name of library to be updated via renovate |
-| `--maxAgeDays`    | number | 7 | The maximum age, in days, since when a PR was merge to consider it the relevant PR. Only used by the special cases of `majorVersion` |
+| option            | type    | default | description        |
+| ----------------- | ------- | ------- | ------------------ |
+| `--majorVersion`  | string  | none    | Major version number for the library, for example `v11`. If you provide `all` then it will instead address the `all non-major updates` PR. If you provide `projen`, it will address the `fix(deps): upgrade projen` PR. |
+| `--library`       | string  | `@time-loop/cdk-library` | Full name of library to be updated via renovate |
+| `--maxAgeDays`    | number  | 7 | The maximum age, in days, since when a PR was merge to consider it the relevant PR. Only used by the special cases of `majorVersion` |
+| `--merge`         | boolean | true | Whether to merge PRs. When set to `false` (using `--no-merge`), the script will validate PRs are ready to merge but will not actually merge them |
 
 ### PAT Requirements
 

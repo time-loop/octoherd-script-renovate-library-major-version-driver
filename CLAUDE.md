@@ -86,6 +86,7 @@ The script handles three distinct patterns via the `--majorVersion` parameter:
 - `--majorVersion` (required): Major version (e.g., `v11`), `all`, or `projen`
 - `--library` (default: `@time-loop/cdk-library`): Library name (ignored for `all` and `projen`)
 - `--maxAgeDays` (default: 7): Maximum age in days for merged PRs (only used with `all` and `projen`)
+- `--merge` (default: true): Whether to merge PRs. Use `--no-merge` to validate PRs without actually merging them
 
 ### PAT Requirements
 
