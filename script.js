@@ -1,4 +1,3 @@
-
 // @ts-check
 
 const noTouchTopicName = "octoherd-no-touch";
@@ -100,102 +99,6 @@ async function updateWorkflowPnpmVersions(
   } else {
     octokit.log.info(
       `${repoFullName}: No workflow files needed pnpm version update`,
-    );
-  }
-}
-
-/**
- * Updates pnpm version from "9" to 9.15.7 in workflow files
- *
- * @param {import('@octoherd/cli').Octokit} octokit
- * @param {object} baseParams - { owner, repo }
- * @param {string} prBranch - PR branch name
- * @param {string} repoFullName - Full repository name for logging
- */
-async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFullName) {
-  const workflowFiles = [
-    '.github/workflows/build.yml',
-    '.github/workflows/release.yml',
-    '.github/workflows/update-projen-main.yml',
-  ];
-
-  const updatedFiles = [];
-
-  for (const workflowPath of workflowFiles) {
-    try {
-      // Try to fetch the workflow file from the PR branch
-      let fileResponse;
-      try {
-        fileResponse = await octokit.request(
-          'GET /repos/{owner}/{repo}/contents/{path}',
-          {
-            ...baseParams,
-            path: workflowPath,
-            ref: prBranch,
-          }
-        );
-      } catch (error) {
-        if (error.status === 404) {
-          octokit.log.info(
-            `${repoFullName}: ${workflowPath} not found in PR branch, skipping`
-          );
-          continue;
-        }
-        throw error;
-      }
-
-      const content = Buffer.from(fileResponse.data.content, 'base64').toString('utf-8');
-      const fileSha = fileResponse.data.sha;
-
-      // Check if the file contains the pattern we're looking for
-      // We need to ensure we're updating the version under pnpm/action-setup
-      const pnpmActionRegex = /uses:\s*pnpm\/action-setup@v4[\s\S]*?with:\s*\n(\s+)version:\s*"9"/;
-
-      if (!pnpmActionRegex.test(content)) {
-        // Pattern not found, skip this file
-        continue;
-      }
-
-      // Replace quoted "9" with unquoted 9.15.7, preserving indentation
-      const updatedContent = content.replace(
-        /(\s+version:\s*)"9"/g,
-        '$19.15.7'
-      );
-
-      // Only commit if content actually changed
-      if (updatedContent !== content) {
-        await octokit.request(
-          'PUT /repos/{owner}/{repo}/contents/{path}',
-          {
-            ...baseParams,
-            path: workflowPath,
-            message: 'chore(projen): update pnpm version in workflows',
-            content: Buffer.from(updatedContent).toString('base64'),
-            sha: fileSha,
-            branch: prBranch,
-          }
-        );
-
-        updatedFiles.push(workflowPath);
-        octokit.log.info(
-          `${repoFullName}: Updated pnpm version in ${workflowPath}`
-        );
-      }
-    } catch (error) {
-      // Log warning but continue with other files
-      octokit.log.warn(
-        `${repoFullName}: Failed to update ${workflowPath}: ${error.message}`
-      );
-    }
-  }
-
-  if (updatedFiles.length > 0) {
-    octokit.log.info(
-      `${repoFullName}: Successfully updated pnpm version in ${updatedFiles.length} workflow file(s): ${updatedFiles.join(', ')}`
-    );
-  } else {
-    octokit.log.info(
-      `${repoFullName}: No workflow files needed pnpm version update`
     );
   }
 }
