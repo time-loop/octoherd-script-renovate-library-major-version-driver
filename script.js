@@ -362,6 +362,39 @@ export async function script(
         }
       }
 
+      let autoMergeEnabled = false;
+      if (merge) {
+        try {
+          await octokit.graphql(
+            `mutation enableAutoMerge($pullRequestId: ID!) {
+              enablePullRequestAutoMerge(input: {
+                pullRequestId: $pullRequestId
+                mergeMethod: SQUASH
+              }) {
+                pullRequest {
+                  autoMergeRequest {
+                    enabledAt
+                  }
+                }
+              }
+            }`,
+            {
+              pullRequestId: id,
+            },
+          );
+          octokit.log.info(
+            "auto-merge enabled, GitHub will merge when ready: %s",
+            pr.html_url,
+          );
+          autoMergeEnabled = true;
+        } catch (error) {
+          // Auto-merge not allowed or failed, fall back to manual merge
+          octokit.log.info(
+            `${repository.full_name}: auto-merge not available (${error.message}), falling back to manual merge`,
+          );
+        }
+      }
+
       // Copied from
       // https://github.com/gr2m/octoherd-script-merge-pull-requests/blob/main/script.js
       const result = await octokit.graphql(
@@ -502,7 +535,7 @@ export async function script(
         }
       }
 
-      if (merge) {
+      if (merge && !autoMergeEnabled) {
         const commit_title = `${pr.title} (#${pr.number})`;
         await octokit.request(
           "PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge",
@@ -514,7 +547,7 @@ export async function script(
             merge_method: "squash",
           },
         );
-        octokit.log.info("pull request merged: %s", pr.html_url);
+        octokit.log.info("pull request manually merged: %s", pr.html_url);
       } else {
         octokit.log.info(
           "pull request ready to merge (merge disabled): %s",
