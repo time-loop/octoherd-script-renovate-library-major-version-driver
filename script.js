@@ -395,7 +395,6 @@ export async function script(
         }
       }
 
-
       // Copied from
       // https://github.com/gr2m/octoherd-script-merge-pull-requests/blob/main/script.js
       const result = await octokit.graphql(
