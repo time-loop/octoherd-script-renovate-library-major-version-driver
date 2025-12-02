@@ -1,7 +1,6 @@
-
 // @ts-check
 
-const noTouchTopicName = 'octoherd-no-touch';
+const noTouchTopicName = "octoherd-no-touch";
 
 /**
  * Updates pnpm version from "9" to 9.15.7 in workflow files
@@ -11,11 +10,16 @@ const noTouchTopicName = 'octoherd-no-touch';
  * @param {string} prBranch - PR branch name
  * @param {string} repoFullName - Full repository name for logging
  */
-async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFullName) {
+async function updateWorkflowPnpmVersions(
+  octokit,
+  baseParams,
+  prBranch,
+  repoFullName,
+) {
   const workflowFiles = [
-    '.github/workflows/build.yml',
-    '.github/workflows/release.yml',
-    '.github/workflows/update-projen-main.yml',
+    ".github/workflows/build.yml",
+    ".github/workflows/release.yml",
+    ".github/workflows/update-projen-main.yml",
   ];
 
   const updatedFiles = [];
@@ -26,29 +30,32 @@ async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFul
       let fileResponse;
       try {
         fileResponse = await octokit.request(
-          'GET /repos/{owner}/{repo}/contents/{path}',
+          "GET /repos/{owner}/{repo}/contents/{path}",
           {
             ...baseParams,
             path: workflowPath,
             ref: prBranch,
-          }
+          },
         );
       } catch (error) {
         if (error.status === 404) {
           octokit.log.info(
-            `${repoFullName}: ${workflowPath} not found in PR branch, skipping`
+            `${repoFullName}: ${workflowPath} not found in PR branch, skipping`,
           );
           continue;
         }
         throw error;
       }
 
-      const content = Buffer.from(fileResponse.data.content, 'base64').toString('utf-8');
+      const content = Buffer.from(fileResponse.data.content, "base64").toString(
+        "utf-8",
+      );
       const fileSha = fileResponse.data.sha;
 
       // Check if the file contains the pattern we're looking for
       // We need to ensure we're updating the version under pnpm/action-setup
-      const pnpmActionRegex = /uses:\s*pnpm\/action-setup@v4[\s\S]*?with:\s*\n(\s+)version:\s*"9"/;
+      const pnpmActionRegex =
+        /uses:\s*pnpm\/action-setup@v4[\s\S]*?with:\s*\n(\s+)version:\s*"9"/;
 
       if (!pnpmActionRegex.test(content)) {
         // Pattern not found, skip this file
@@ -58,43 +65,40 @@ async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFul
       // Replace quoted "9" with unquoted 9.15.7, preserving indentation
       const updatedContent = content.replace(
         /(\s+version:\s*)"9"/g,
-        '$19.15.7'
+        "$19.15.7",
       );
 
       // Only commit if content actually changed
       if (updatedContent !== content) {
-        await octokit.request(
-          'PUT /repos/{owner}/{repo}/contents/{path}',
-          {
-            ...baseParams,
-            path: workflowPath,
-            message: 'chore(projen): update pnpm version in workflows',
-            content: Buffer.from(updatedContent).toString('base64'),
-            sha: fileSha,
-            branch: prBranch,
-          }
-        );
+        await octokit.request("PUT /repos/{owner}/{repo}/contents/{path}", {
+          ...baseParams,
+          path: workflowPath,
+          message: "chore(projen): update pnpm version in workflows",
+          content: Buffer.from(updatedContent).toString("base64"),
+          sha: fileSha,
+          branch: prBranch,
+        });
 
         updatedFiles.push(workflowPath);
         octokit.log.info(
-          `${repoFullName}: Updated pnpm version in ${workflowPath}`
+          `${repoFullName}: Updated pnpm version in ${workflowPath}`,
         );
       }
     } catch (error) {
       // Log warning but continue with other files
       octokit.log.warn(
-        `${repoFullName}: Failed to update ${workflowPath}: ${error.message}`
+        `${repoFullName}: Failed to update ${workflowPath}: ${error.message}`,
       );
     }
   }
 
   if (updatedFiles.length > 0) {
     octokit.log.info(
-      `${repoFullName}: Successfully updated pnpm version in ${updatedFiles.length} workflow file(s): ${updatedFiles.join(', ')}`
+      `${repoFullName}: Successfully updated pnpm version in ${updatedFiles.length} workflow file(s): ${updatedFiles.join(", ")}`,
     );
   } else {
     octokit.log.info(
-      `${repoFullName}: No workflow files needed pnpm version update`
+      `${repoFullName}: No workflow files needed pnpm version update`,
     );
   }
 }
@@ -113,27 +117,32 @@ async function updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repoFul
 export async function script(
   octokit,
   repository,
-  { majorVersion, library = '@time-loop/cdk-library', maxAgeDays = 7, merge = true }
+  {
+    majorVersion,
+    library = "@time-loop/cdk-library",
+    maxAgeDays = 7,
+    merge = true,
+  },
 ) {
   if (!majorVersion) {
-    throw new Error('--majorVersion is required, example v11');
+    throw new Error("--majorVersion is required, example v11");
   }
 
   let checkMaxAge = false;
   let expectedTitle = `fix(deps): update dependency ${library} to ${majorVersion}`;
-  let workflowName = 'renovate';
+  let workflowName = "renovate";
   switch (majorVersion) {
-    case 'all':
+    case "all":
       checkMaxAge = true;
-      expectedTitle = 'fix(deps): update all non-major dependencies';
+      expectedTitle = "fix(deps): update all non-major dependencies";
       break;
-    case 'projen':
+    case "projen":
       checkMaxAge = true;
-      expectedTitle = 'fix(deps): upgrade projen';
-      workflowName = 'update-projen-main';
+      expectedTitle = "fix(deps): upgrade projen";
+      workflowName = "update-projen-main";
   }
 
-  const [repoOwner, repoName] = repository.full_name.split('/');
+  const [repoOwner, repoName] = repository.full_name.split("/");
   const baseParams = {
     owner: repoOwner,
     repo: repoName,
@@ -148,21 +157,21 @@ export async function script(
 
     // Safety check.
     const topics = await octokit.request(
-      'GET /repos/{owner}/{repo}/topics',
-      baseParams
+      "GET /repos/{owner}/{repo}/topics",
+      baseParams,
     );
     if (topics.data.names.includes(noTouchTopicName)) {
       octokit.log.warn(
-        `${repository.full_name} has label '${noTouchTopicName}'`
+        `${repository.full_name} has label '${noTouchTopicName}'`,
       );
       return;
     }
 
     // Find PR for library update?
     const prs = await octokit.paginate(
-      'GET /repos/{owner}/{repo}/pulls',
-      { ...baseParams, state: 'all' },
-      (response) => response.data
+      "GET /repos/{owner}/{repo}/pulls",
+      { ...baseParams, state: "all" },
+      (response) => response.data,
     );
     for (const pr of prs) {
       const { id, title, merged_at, html_url, draft, closed_at } = pr;
@@ -175,15 +184,16 @@ export async function script(
       if (merged_at) {
         const currentDate = new Date();
         const mergedAt = Date.parse(merged_at);
-        const daysAgo = (currentDate.getTime() - mergedAt) / (1000 * 60 * 60 * 24);
+        const daysAgo =
+          (currentDate.getTime() - mergedAt) / (1000 * 60 * 60 * 24);
         if (checkMaxAge && daysAgo > maxAgeDays) {
           octokit.log.info(
-            `${repository.full_name} already merged ${html_url} at ${merged_at}, ${daysAgo.toFixed(1)} days ago, ignoring`
+            `${repository.full_name} already merged ${html_url} at ${merged_at}, ${daysAgo.toFixed(1)} days ago, ignoring`,
           );
           break; // PRs are returned in chronological order. No need to look further, it doesn't exist.
         }
         octokit.log.info(
-          `${repository.full_name} already merged ${html_url} at ${merged_at}`
+          `${repository.full_name} already merged ${html_url} at ${merged_at}`,
         );
         return;
       }
@@ -198,31 +208,31 @@ export async function script(
       }
 
       // Apply .projenrc.ts fix for projen PRs
-      if (majorVersion === 'projen') {
+      if (majorVersion === "projen") {
         try {
           const prBranch = pr.head.ref;
-          const projenrcPath = '.projenrc.ts';
+          const projenrcPath = ".projenrc.ts";
 
           // Fetch the .projenrc.ts file from the PR branch
           let fileResponse;
           try {
             fileResponse = await octokit.request(
-              'GET /repos/{owner}/{repo}/contents/{path}',
+              "GET /repos/{owner}/{repo}/contents/{path}",
               {
                 ...baseParams,
                 path: projenrcPath,
                 ref: prBranch,
-              }
+              },
             );
           } catch (error) {
             // File doesn't exist or can't be fetched, continue normally
             if (error.status === 404) {
               octokit.log.info(
-                `${repository.full_name}: .projenrc.ts not found in PR branch, skipping fix`
+                `${repository.full_name}: .projenrc.ts not found in PR branch, skipping fix`,
               );
             } else {
               octokit.log.warn(
-                `${repository.full_name}: Could not fetch .projenrc.ts: ${error.message}`
+                `${repository.full_name}: Could not fetch .projenrc.ts: ${error.message}`,
               );
             }
             // Continue to PR validation
@@ -230,99 +240,123 @@ export async function script(
           }
 
           if (fileResponse) {
-            const content = Buffer.from(fileResponse.data.content, 'base64').toString('utf-8');
+            const content = Buffer.from(
+              fileResponse.data.content,
+              "base64",
+            ).toString("utf-8");
             const fileSha = fileResponse.data.sha;
 
             // Check if the file contains the deprecated packageManager configuration
-            if (content.includes('packageManager: javascript.NodePackageManager.PNPM')) {
+            if (
+              content.includes(
+                "packageManager: javascript.NodePackageManager.PNPM",
+              )
+            ) {
               octokit.log.info(
-                `${repository.full_name}: Found deprecated packageManager configuration, applying fix...`
+                `${repository.full_name}: Found deprecated packageManager configuration, applying fix...`,
               );
 
               let updatedContent = content;
 
               // Check if pnpmVersion exists and warn if it's not the default
-              const pnpmVersionMatch = content.match(/pnpmVersion:\s*['"]([^'"]+)['"]/);
-              if (pnpmVersionMatch && pnpmVersionMatch[1] !== '9') {
+              const pnpmVersionMatch = content.match(
+                /pnpmVersion:\s*['"]([^'"]+)['"]/,
+              );
+              if (pnpmVersionMatch && pnpmVersionMatch[1] !== "9") {
                 octokit.log.warn(
-                  `${repository.full_name}: Removing non-standard pnpmVersion: '${pnpmVersionMatch[1]}'`
+                  `${repository.full_name}: Removing non-standard pnpmVersion: '${pnpmVersionMatch[1]}'`,
                 );
               }
 
               // Remove the packageManager line
               updatedContent = updatedContent.replace(
                 /^\s*packageManager:\s*javascript\.NodePackageManager\.PNPM,?\s*$/gm,
-                ''
+                "",
               );
 
               // Remove the pnpmVersion line (handles any version)
               updatedContent = updatedContent.replace(
                 /^\s*pnpmVersion:\s*['"][^'"]*['"],?\s*$/gm,
-                ''
+                "",
               );
 
               // Check if 'javascript' import is still used elsewhere in the file
               const remainingContent = updatedContent.replace(
                 /^import\s+\{[^}]*\}\s+from\s+['"]projen['"];?\s*$/gm,
-                ''
+                "",
               );
 
               // If 'javascript' is not used anywhere else, remove the import
-              if (!remainingContent.includes('javascript.')) {
+              if (!remainingContent.includes("javascript.")) {
                 updatedContent = updatedContent.replace(
                   /^import\s+\{\s*javascript\s*\}\s+from\s+['"]projen['"];?[ \t]*\n/gm,
-                  ''
+                  "",
                 );
               }
 
               // Clean up any extra blank lines that might have been created
-              updatedContent = updatedContent.replace(/\n\n\n+/g, '\n\n');
+              updatedContent = updatedContent.replace(/\n\n\n+/g, "\n\n");
 
               // Clean up blank lines left in object/array property lists after removing lines
               // This handles: property,\n\n  property -> property,\n  property
-              updatedContent = updatedContent.replace(/,\s*\n\s*\n(\s+)/g, ',\n$1');
+              updatedContent = updatedContent.replace(
+                /,\s*\n\s*\n(\s+)/g,
+                ",\n$1",
+              );
 
               // Clean up blank lines at the start of objects/arrays after removing first property
               // This handles: {\n\n  property -> {\n  property
-              updatedContent = updatedContent.replace(/\{\s*\n\s*\n(\s+)/g, '{\n$1');
+              updatedContent = updatedContent.replace(
+                /\{\s*\n\s*\n(\s+)/g,
+                "{\n$1",
+              );
 
               // Clean up blank lines before closing braces
               // This handles: \n\n} -> \n} while preserving commas
-              updatedContent = updatedContent.replace(/\s*\n\s*\n(\s*\})/g, '\n$1');
+              updatedContent = updatedContent.replace(
+                /\s*\n\s*\n(\s*\})/g,
+                "\n$1",
+              );
 
               // Only commit if content actually changed
               if (updatedContent !== content) {
                 // Commit the changes to the PR branch
                 await octokit.request(
-                  'PUT /repos/{owner}/{repo}/contents/{path}',
+                  "PUT /repos/{owner}/{repo}/contents/{path}",
                   {
                     ...baseParams,
                     path: projenrcPath,
-                    message: 'chore(projen): remove deprecated packageManager configuration',
-                    content: Buffer.from(updatedContent).toString('base64'),
+                    message:
+                      "chore(projen): remove deprecated packageManager configuration",
+                    content: Buffer.from(updatedContent).toString("base64"),
                     sha: fileSha,
                     branch: prBranch,
-                  }
+                  },
                 );
 
                 octokit.log.info(
-                  `${repository.full_name}: Successfully fixed .projenrc.ts in PR ${html_url}`
+                  `${repository.full_name}: Successfully fixed .projenrc.ts in PR ${html_url}`,
                 );
               } else {
                 octokit.log.info(
-                  `${repository.full_name}: No changes needed for .projenrc.ts`
+                  `${repository.full_name}: No changes needed for .projenrc.ts`,
                 );
               }
             }
 
             // Always update pnpm version in workflow files for idempotency
             // (handles cases where .projenrc.ts was already fixed but workflows weren't)
-            await updateWorkflowPnpmVersions(octokit, baseParams, prBranch, repository.full_name);
+            await updateWorkflowPnpmVersions(
+              octokit,
+              baseParams,
+              prBranch,
+              repository.full_name,
+            );
           }
         } catch (error) {
           // Log error but don't stop the script
           octokit.log.error(
-            `${repository.full_name}: Error while fixing .projenrc.ts: ${error.message}`
+            `${repository.full_name}: Error while fixing .projenrc.ts: ${error.message}`,
           );
           // Continue to PR validation
         }
@@ -362,7 +396,7 @@ export async function script(
         `,
         {
           htmlUrl: html_url,
-        }
+        },
       );
 
       const { reviewDecision, mergeable, viewerCanUpdate, viewerDidAuthor } =
@@ -370,12 +404,13 @@ export async function script(
 
       // Status check information
       const combinedStatus =
-        result.resource.commits.nodes[0].commit.statusCheckRollup?.state || 'PENDING';
+        result.resource.commits.nodes[0].commit.statusCheckRollup?.state ||
+        "PENDING";
 
       // Approval information
       const viewerDidApprove =
         !!result.resource.latestOpinionatedReviews.nodes.find(
-          (node) => node.viewerDidAuthor
+          (node) => node.viewerDidAuthor,
         );
 
       const latestCommitId = result.resource.commits.nodes[0].commit.oid;
@@ -394,43 +429,43 @@ export async function script(
         octokit.log.info(
           logData,
           `%s: you cannot update this PR. Skipping`,
-          pr.html_url
+          pr.html_url,
         );
         return;
       }
 
-      if (combinedStatus !== 'SUCCESS') {
+      if (combinedStatus !== "SUCCESS") {
         octokit.log.info(
           logData,
           `%s: status is "%s". Skipping`,
           pr.html_url,
-          combinedStatus
+          combinedStatus,
         );
         return;
       }
 
-      if (mergeable !== 'MERGEABLE') {
+      if (mergeable !== "MERGEABLE") {
         octokit.log.info(
           logData,
           `%s: mergable status is "%s". Skipping`,
           pr.html_url,
-          mergeable
+          mergeable,
         );
         return;
       }
 
-      if (reviewDecision !== 'APPROVED') {
+      if (reviewDecision !== "APPROVED") {
         if (!viewerDidAuthor && !viewerDidApprove) {
           // attempt to add approval
           await octokit.request(
-            'POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews',
+            "POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
             {
               owner: repository.owner.login,
               repo: repository.name,
               pull_number: pr.number,
-              event: 'APPROVE',
+              event: "APPROVE",
               commit_id: latestCommitId,
-            }
+            },
           );
 
           // check if PR is now approved
@@ -446,22 +481,22 @@ export async function script(
               }`,
             {
               htmlUrl: pr.html_url,
-            }
+            },
           );
 
-          if (newReviewDecision !== 'APPROVED') {
+          if (newReviewDecision !== "APPROVED") {
             octokit.log.info(
               logData,
-              '%s: awaiting approval. Skipping',
-              pr.html_url
+              "%s: awaiting approval. Skipping",
+              pr.html_url,
             );
             return;
           }
         } else {
           octokit.log.info(
             logData,
-            '%s: awaiting approval. Skipping',
-            pr.html_url
+            "%s: awaiting approval. Skipping",
+            pr.html_url,
           );
           return;
         }
@@ -470,33 +505,34 @@ export async function script(
       if (merge) {
         const commit_title = `${pr.title} (#${pr.number})`;
         await octokit.request(
-          'PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge',
+          "PUT /repos/{owner}/{repo}/pulls/{pull_number}/merge",
           {
             owner: repository.owner.login,
             repo: repository.name,
             pull_number: pr.number,
             commit_title,
-            merge_method: 'squash',
-          }
+            merge_method: "squash",
+          },
         );
-        octokit.log.info('pull request merged: %s', pr.html_url);
+        octokit.log.info("pull request merged: %s", pr.html_url);
       } else {
-        octokit.log.info('pull request ready to merge (merge disabled): %s', pr.html_url);
+        octokit.log.info(
+          "pull request ready to merge (merge disabled): %s",
+          pr.html_url,
+        );
       }
       return;
     }
 
     // TODO: trigger renovate to generate the PR? If so, we should also detect when the action is already running.
-    octokit.log.warn(
-      `${repository.full_name} has no PR for ${expectedTitle}`
-    );
+    octokit.log.warn(`${repository.full_name} has no PR for ${expectedTitle}`);
 
     // Find the update-main workflow,
     const workflowPath = `.github/workflows/${workflowName}.yml`;
     const workflows = await octokit.paginate(
-      'GET /repos/{owner}/{repo}/actions/workflows',
+      "GET /repos/{owner}/{repo}/actions/workflows",
       { ...baseParams, per_page: 100 },
-      (response) => response.data
+      (response) => response.data,
     );
     const renovateWf = workflows.find((w) => w.path === workflowPath);
     // octokit.log.info(JSON.stringify(renovateWf));
@@ -507,24 +543,36 @@ export async function script(
     const workflow_id = renovateWf?.id ?? 0; // Should never be 0, but...
 
     // is it still running?
-    const runs = await octokit.paginate('GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs', {
-      ...baseParams,
-      workflow_id,
-      per_page: 100,
-    },  (response) => response.data);
+    const runs = await octokit.paginate(
+      "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",
+      {
+        ...baseParams,
+        workflow_id,
+        per_page: 100,
+      },
+      (response) => response.data,
+    );
 
     const sortedRunsOnMain = runs
-      .filter((r) => r.head_branch === 'main')
+      .filter((r) => r.head_branch === "main")
       .sort((a, b) => b.run_number - a.run_number); // Sort to find newest
 
     const lastRun = sortedRunsOnMain[0];
-    octokit.log.info(`${repository.full_name} lastRun.run_started_at: ${lastRun.run_started_at} status: ${lastRun.status} id: ${lastRun.id}`);
+    octokit.log.info(
+      `${repository.full_name} lastRun.run_started_at: ${lastRun.run_started_at} status: ${lastRun.status} id: ${lastRun.id}`,
+    );
 
     // If it's still running, comment and proceed
     // Per https://docs.github.com/en/free-pro-team@latest/rest/actions/workflow-runs?apiVersion=2022-11-28#get-a-workflow-run
     // Can be one of: completed, action_required, cancelled, failure, neutral, skipped, stale, success, timed_out, in_progress, queued, requested, waiting, pending
-    if (['in_progress', 'queued', 'requested', 'waiting', 'pending'].includes(lastRun.status ?? 'unknown')) {
-      octokit.log.info(`${repository.full_name} renovate is currently ${lastRun.status}: ${lastRun.html_url}`);
+    if (
+      ["in_progress", "queued", "requested", "waiting", "pending"].includes(
+        lastRun.status ?? "unknown",
+      )
+    ) {
+      octokit.log.info(
+        `${repository.full_name} renovate is currently ${lastRun.status}: ${lastRun.html_url}`,
+      );
       return;
     }
 
@@ -533,18 +581,21 @@ export async function script(
       const lastRunTime = Date.parse(lastRun.run_started_at);
       const minutesSinceLastRun = (Date.now() - lastRunTime) / (1000 * 60);
       if (minutesSinceLastRun < 30) {
-        octokit.log.info(`${repository.full_name} workflow ran ${minutesSinceLastRun.toFixed(1)} minutes ago, skipping re-run (throttled)`);
+        octokit.log.info(
+          `${repository.full_name} workflow ran ${minutesSinceLastRun.toFixed(1)} minutes ago, skipping re-run (throttled)`,
+        );
         return;
       }
     }
 
     // Otherwise trigger a re-run
-    octokit.log.info(`${repository.full_name} Triggering re-run of ${lastRun.id}`);
-    octokit.request('POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun', {
+    octokit.log.info(
+      `${repository.full_name} Triggering re-run of ${lastRun.id}`,
+    );
+    octokit.request("POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun", {
       ...baseParams,
       run_id: lastRun.id,
     });
-
   } catch (e) {
     octokit.log.error(e);
   }
