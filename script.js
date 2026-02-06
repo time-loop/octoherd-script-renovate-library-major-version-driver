@@ -62,10 +62,10 @@ async function updateWorkflowPnpmVersions(
         continue;
       }
 
-      // Replace quoted "9" with unquoted 9.15.7, preserving indentation
+      // Replace quoted "9" with unquoted 10.22.0, preserving indentation
       const updatedContent = content.replace(
         /(\s+version:\s*)"9"/g,
-        "$19.15.7",
+        "$110.22.0",
       );
 
       // Only commit if content actually changed

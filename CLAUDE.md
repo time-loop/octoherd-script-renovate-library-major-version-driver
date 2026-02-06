@@ -39,34 +39,50 @@ npm start # Alias for: node cli.js
 
 ### Core Files
 - **cli.js** - Entry point that imports and runs the script using `@octoherd/cli/run`
-- **script.js** - Main script logic exported as `async function script(octokit, repository, options)`
+- **script.js** - Main script logic with two key exports:
+  - `updateWorkflowPnpmVersions()` - Helper function (lines 13-104) that updates pnpm versions in workflow files
+  - `script()` - Main function (lines 117-635) that orchestrates the PR merge workflow
 
 ### Workflow Logic (script.js)
 
 The script follows this sequence for each repository:
 
-1. **Safety checks** (lines 46-61):
+1. **Safety checks** (lines 151-168):
    - Skip archived repositories
    - Check for `octoherd-no-touch` topic to skip protected repos
 
-2. **PR Discovery** (lines 63-100):
+2. **PR Discovery** (lines 170-209):
    - Search for PRs matching the expected title pattern
    - For special cases (`all` and `projen`), check `maxAgeDays` to avoid stale merged PRs
    - Skip if PR is already merged, closed, or in draft state
 
-3. **PR Validation** (lines 104-191):
+4. **Projen-specific fixes** (lines 210-363):
+   - For `projen` major version only:
+     - Updates `.projenrc.ts` to remove deprecated `packageManager: javascript.NodePackageManager.PNPM` configuration
+     - Removes `pnpmVersion` property (warns if non-standard value found)
+     - Cleans up unused `javascript` imports
+     - Updates pnpm version in workflow files (`.github/workflows/*.yml`) from "9" to 10.22.0
+   - These changes are committed directly to the PR branch before approval/merge
+
+5. **Auto-merge attempt** (lines 365-396):
+   - Tries to enable GitHub auto-merge via GraphQL mutation (SQUASH method)
+   - Falls back to manual merge if auto-merge is not available
+   - Auto-merge allows GitHub to merge when all checks pass
+
+6. **PR Validation** (lines 398-488):
    - Uses GraphQL query to fetch comprehensive PR status
    - Checks: mergeable state, review decision, CI status (statusCheckRollup)
    - Exits early if PR cannot be updated, CI failing, or conflicts exist
 
-4. **Auto-approval** (lines 193-239):
+7. **Auto-approval** (lines 490-536):
    - Attempts to approve PR if not already approved and viewer can approve
    - Re-checks approval status after attempting approval
 
-5. **Merge** (lines 241-253):
+8. **Merge** (lines 538-557):
+   - Only performs manual merge if auto-merge was not enabled
    - Squash merges the PR with standardized commit title format
 
-6. **Workflow Re-run** (lines 256-305):
+9. **Workflow Re-run** (lines 559-632):
    - If no PR exists, finds the relevant workflow (renovate.yml or update-projen-main.yml)
    - Checks if workflow is already running
    - Validates that at least 30 minutes have passed since the last workflow run (throttling)
@@ -99,3 +115,8 @@ The GitHub Personal Access Token needs:
 - Combines REST API and GraphQL for comprehensive PR status checking
 - Workflow re-run logic ensures Renovate runs are triggered when PRs don't exist
 - The `noTouchTopicName` constant (`octoherd-no-touch`) provides escape hatch for repositories
+- For projen updates, automatically modernizes pnpm configuration:
+  - Removes deprecated `packageManager` and `pnpmVersion` properties from `.projenrc.ts`
+  - Updates workflow files to use pnpm 10.22.0 (unquoted) instead of "9" (quoted)
+  - Targets `.github/workflows/{build,release,update-projen-main}.yml`
+  - Changes are idempotent and committed directly to the PR branch before merge
